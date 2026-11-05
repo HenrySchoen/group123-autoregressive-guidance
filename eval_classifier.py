@@ -34,19 +34,28 @@ def load_model(
 def prefix_accuracy(model, loader, device, max_length: int):
     hits = torch.zeros(len(FAMILIES), max_length)
     counts = torch.zeros(len(FAMILIES), max_length)
+    clean_hits = torch.zeros(len(FAMILIES))
+    clean_counts = torch.zeros(len(FAMILIES))
 
-    for x, _, y, _ in loader:
-        x, y = x.to(device), y.to(device)
+    for x, _, y, length in loader:
+        x, y, length = x.to(device), y.to(device), length.to(device)
+        predicted = model(x).argmax(dim=-1)
+        batch, eos = torch.arange(len(x), device=device), length + 1
+
         mask = valid_positions(x)
-        correct = (model(x).argmax(dim=-1) == y[:, None]) & mask
+        mask[batch, eos] = False  # the EOS state sees the whole sequence, not a prefix
+        correct = (predicted == y[:, None]) & mask
+        clean_correct = predicted[batch, eos] == y
 
         for i in range(len(FAMILIES)):
             rows = y == i
             hits[i] += correct[rows].sum(dim=0).cpu()
             # shorter sequences stop early, so every position needs its own count
             counts[i] += mask[rows].sum(dim=0).cpu()
+            clean_hits[i] += clean_correct[rows].sum().cpu()
+            clean_counts[i] += rows.sum().cpu()
 
-    return hits, counts
+    return hits, counts, clean_hits, clean_counts
 
 
 def main() -> None:
@@ -59,7 +68,9 @@ def main() -> None:
     device = get_device()
     _, val_data, _, _, val_loader, _ = get_loaders(args.batch_size)
     model = load_model(Path(args.backbone), Path(args.checkpoint), device)
-    hits, counts = prefix_accuracy(model, val_loader, device, val_data.max_length)
+    hits, counts, clean_hits, clean_counts = prefix_accuracy(
+        model, val_loader, device, val_data.max_length
+    )
 
     table = pd.DataFrame({"prefix_length": range(val_data.max_length)})
     table["accuracy"] = (hits.sum(0) / counts.sum(0)).numpy()
@@ -70,8 +81,17 @@ def main() -> None:
 
     table = table[table["n_sequences"] > 0]
 
+    clean = pd.DataFrame(
+        {
+            "family": FAMILIES,
+            "accuracy": (clean_hits / clean_counts).numpy(),
+            "n_sequences": clean_counts.numpy(),
+        }
+    )
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     table.to_csv(OUT_DIR / "prefix_accuracy.csv", index=False)
+    clean.to_csv(OUT_DIR / "clean_accuracy.csv", index=False)
 
     for family in FAMILIES:
         plt.plot(table["prefix_length"], table[family], label=family)
@@ -83,6 +103,10 @@ def main() -> None:
     plt.legend()
     plt.savefig(OUT_DIR / "prefix_accuracy.png", dpi=150)
 
+    print("complete sequences")
+    print(clean.to_string(index=False))
+    print(f"all {(clean_hits.sum() / clean_counts.sum()).item():.4f}\n")
+    print("by prefix length")
     print(table.to_string(index=False))
 
 
