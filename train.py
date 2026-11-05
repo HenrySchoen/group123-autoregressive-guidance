@@ -90,11 +90,14 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--overfit", action="store_true", help="train on a single batch")
     parser.add_argument("--wandb", action="store_true", help="log to wandb")
     args = parser.parse_args()
 
-    torch.manual_seed(0)
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
+    
     device = get_device()
     _, _, _, train_loader, val_loader, _ = get_loaders(args.batch_size)
     if args.overfit:
@@ -120,8 +123,6 @@ def main() -> None:
         train_loss = train_epoch(model, train_loader, optimizer, device, tqdm_)
         val_loss = evaluate(model, val_loader, device, tqdm_)
         history.append({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss})
-        if logger:
-            logger.log({"train_loss": train_loss, "val_loss": val_loss, "epoch": epoch})
 
         if val_loss < best_val:
             best_val = val_loss
@@ -134,8 +135,9 @@ def main() -> None:
             }
 
             torch.save(checkpoint, f'{CKPT_DIR}/{args.model}.pt')
-            if logger:
-                logger.log({"best_epoch": epoch, "best_val_loss": best_val})
+
+        if logger:
+            logger.log({"train_loss": train_loss, "val_loss": val_loss, "epoch": epoch, "best_val_loss": best_val})
 
         # losses per epoch, for the learning curves in the report
         (CKPT_DIR / f"{args.model}_history.json").write_text(json.dumps(history, indent=1))
