@@ -6,18 +6,22 @@ Run from the repo root:
 """
 import argparse
 import json
+import math
 from pathlib import Path
 from tqdm import tqdm
 import wandb
+import yaml
+
 
 import torch
 import torch.nn.functional as F
 
 from load_data import get_loaders
 from protgen.models.transformer import Transformer
+from protgen.models.mlp import MLP
 
 CKPT_DIR = Path("results/checkpoints")
-
+CONFIG = yaml.safe_load(open(Path(__file__).parent / "config/default.yaml"))
 
 def get_device() -> torch.device:
     if torch.cuda.is_available():
@@ -30,7 +34,8 @@ def get_device() -> torch.device:
 def build_model(name: str) -> torch.nn.Module:
     if name == "transformer":
         return Transformer()
-    # <- add other mdols here
+    if name == "mlp":
+        return MLP(**CONFIG["mlp"])
     raise ValueError(f"unknown model: {name}")
 
 
@@ -93,6 +98,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--overfit", action="store_true", help="train on a single batch")
     parser.add_argument("--wandb", action="store_true", help="log to wandb")
+    parser.set_defaults(**CONFIG["train"])
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -123,6 +129,8 @@ def main() -> None:
         train_loss = train_epoch(model, train_loader, optimizer, device, tqdm_)
         val_loss = evaluate(model, val_loader, device, tqdm_)
         history.append({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss})
+        val_ppl = math.exp(val_loss)
+        history[-1]["val_ppl"] = val_ppl
 
         if val_loss < best_val:
             best_val = val_loss
@@ -137,6 +145,7 @@ def main() -> None:
             torch.save(checkpoint, f'{CKPT_DIR}/{args.model}.pt')
 
         if logger:
+            logger.log({"val_ppl": val_ppl}, commit=False)
             logger.log({"train_loss": train_loss, "val_loss": val_loss, "epoch": epoch, "best_val_loss": best_val})
 
         # losses per epoch, for the learning curves in the report

@@ -19,5 +19,4 @@
 #cd "$(dirname "$0")/.."
 source hpc/env.sh   # uv on the PATH, caches off the home quota
 
-# Your training command, e.g.:
-# uv run python train.py
+uv run python train.py --model mlp

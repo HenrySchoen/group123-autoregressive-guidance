@@ -1,0 +1,18 @@
+# training
+train:
+  epochs: 20
+  lr: 3.0e-4
+  batch_size: 32
+
+# mlp
+mlp:
+  context: 3
+  embed_dim: 32
+  hidden_dim: 256
+  dropout: 0.1
+
+# sampling
+sample:
+  num: 256
+  temperature: 1.0
+  seed: 0
