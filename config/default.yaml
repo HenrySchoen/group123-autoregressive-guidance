@@ -15,4 +15,10 @@ mlp:
 sample:
   num: 256
   temperature: 1.0
-  seed: 0
+  seed: 0okay 
+
+  # classifier-free guidance
+cfg:
+  p_drop: 0.15
+  target_family: AcyP
+  w_values: [0, 1, 2, 4, 8]
