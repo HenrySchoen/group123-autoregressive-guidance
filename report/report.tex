@@ -7,14 +7,14 @@
 
 % Title.
 % ------
-\title{Template for projects in 02456}
+\title{Classifier and Classifier-Free Guidance of a Protein Language Model}
 
 % Author names and student numbers
 % --------------------------------
 \name{%
   \begin{tabular}{c}
-    Anders Andersen (S123456), Bent Bentsen (S123457) \\
-    Christian Christensen (S123457), Ditte Dittesen (S123458)
+    Henry Leon Schoen (s261927), Leonard Sima (s262040), Paul Konopka (s261560) \\
+    Group 123
   \end{tabular}
 }
 \address{}
@@ -24,78 +24,84 @@
 \maketitle
 
 \begin{abstract}
+  % All
   The abstract should appear at the top of the left-hand column of text, about 0.5 inch (12 mm) below the title area and no more than 3.125 inches (80 mm) in length. Leave a 0.5 inch (12 mm) space between the end of the abstract and the beginning of the main text. The abstract should contain about 100 to 150 words, and should be identical to the abstract text submitted electronically along with the paper cover sheet. All manuscripts must be in English, printed in black ink.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:intro}
 
-These guidelines include complete descriptions of the fonts, spacing, and related information for producing your proceedings manuscripts.
+% All (problem, Bayes rule, what we built, what we found)
+% repo link: https://github.com/HenrySchoen/group123-autoregressive-guidance
 
-\section{Formatting your paper}
-\label{sec:format}
+\section{Methods}
+\label{sec:methods}
 
-All printed material, including text, illustrations, and charts, must be kept within a print area of 7 inches (178 mm) wide by 9 inches (229 mm) high. Do not write or print anything outside the print area. The top margin must be 1 inch (25 mm), except for the title page, and the left margin must be 0.75 inch (19 mm). All \emph{text} must be in a two-column format. Columns are to be 3.39 inches (86 mm) wide, with a 0.24 inch (6 mm) space between them. Text must be fully justified.
+\subsection{Data and autoregressive models}
+\label{ssec:models}
 
-\section{Page title section}
-\label{sec:pagestyle}
+% Leonard for the (data, split & transformer)
+% Paul (MLP)
+% justify the architecture and the hyperparameters
+% \ref{fig:curves}
 
-The paper title (on the first page) should begin 1.38 inches (35 mm) from the top edge of the page, centered, completely capitalized, and in Times 14-point, boldface type. The authors' name(s) and affiliation(s) appear below the title in capital and lower case letters. Papers with multiple authors and affiliations may require two or more lines for this information.
+\subsection{Family classifier}
+\label{ssec:classifier}
 
-\section{Type-style and fonts}
-\label{sec:typestyle}
+% Henry (head on the frozen backbone & why it has to predict from partial sequences)
 
-We strongly encourage you to use Times-Roman font. In addition, this will give the proceedings a more uniform look. Use a font that is no smaller than ten point type throughout the paper, including figure captions.
+\subsection{Classifier guidance}
+\label{ssec:guidance}
 
-This is a minimum spacing; 2.75 lines/cm (7 lines/inch) will make the paper much more readable. Larger type sizes require correspondingly larger vertical spacing. Please do not double-space your paper. True-Type 1 fonts are preferred.
+% Henry (Equation 9, the 21 candidate evaluations per token & the two checks for correctness)
 
-The first paragraph in each section should not be indented, but all the following paragraphs within the section should be indented as these paragraphs demonstrate.
+\subsection{Classifier-free guidance}
+\label{ssec:cfg}
 
-\section{Major headings}
-\label{sec:majhead}
+% Paul (Equation 12, the label embedding & the label dropout)
 
-Major headings, for example, "1. Introduction", should appear in all capital letters, bold face if possible, centered in the column, with one blank line before, and one blank line after. Use a period (".") after the heading number, not a colon.
+\section{Experiments}
+\label{sec:experiments}
 
-\subsection{Subheadings}
-\label{ssec:subhead}
+% Leonard (setup from config/default.yaml, the four metrics, the two controls & what we varied)
 
-Subheadings should appear in lower case (initial word capitalized) in boldface. They should start at the left margin on a separate line.
+\section{Results}
+\label{sec:results}
 
-\subsubsection{Sub-subheadings}
-\label{sssec:subsubhead}
+\subsection{Unconditional models}
+\label{ssec:unconditional}
 
-Sub-subheadings, as in this paragraph, are discouraged. However, if you must use them, they should appear in lower case (initial word capitalized) and start at the left margin on a separate line, with paragraph text beginning on the following line. They should be in italics.
+% Leonard & Paul (how the two models compare on folding & novelty, against both controls)
+% \ref{fig:quality}
 
-\section{Printing your paper}
-\label{sec:print}
+\subsection{Classifier accuracy}
+\label{ssec:accuracy}
 
-If the last page of your paper is only partially filled, arrange the columns so that they are evenly balanced if possible, rather than having one long column.
+% Henry (Complete and partial sequences & drops at the later prefix positions)
+% \ref{fig:prefix}
 
-In \LaTeX, to start a new column (but not a new page) and help balance the last-page column lengths, you can use the command \verb|\pagebreak| as demonstrated on this page (see the \LaTeX source below).
+\subsection{Guidance strength}
+\label{ssec:strength}
 
-\section{Illustrations, graphs, and photographs}
-\label{sec:illust}
+% Henry for lambda
+% Paul for w
+% \ref{fig:tradeoff}
 
-Illustrations must appear within the designated margins. They may span the two columns. If possible, position illustrations at the top of columns, rather than in the middle or at the bottom. Caption and number every illustration.
+\subsection{Comparing the two schemes}
+\label{ssec:comparison}
 
-Since there are many ways, often incompatible, of including images in a \LaTeX document, below is an example of how to do this.
+% Paul (both schemes at their optimum, lambda = 1 against w = 2 & what each one costs)
+% \ref{fig:composition}
 
-\begin{figure}[htb]
-\fbox{\rule{0pt}{4cm}\rule{0.97\columnwidth}{0pt}}
-\caption{Example of placing a figure with experimental results.}
-\label{fig:res}
-\end{figure}
+\section{Discussion}
+\label{sec:discussion}
 
-% To start a new column (but not a new page) and help balance the last-page
-% column length use \vfill\pagebreak.
-% -------------------------------------------------------------------------
-\vfill
-\pagebreak
+% All (circularity of scoring guided samples with the predictor that steered them & how we would know generated data is good)
 
-\section{Footnotes}
-\label{sec:foot}
+\section{Conclusion}
+\label{sec:conclusion}
 
-Use footnotes sparingly (or not at all!) and place them at the bottom of the column on the page on which they are referenced. Use Times 9-point type, single-spaced. To help your readers, avoid using footnotes altogether and include necessary peripheral observations in the text (within parentheses, if you prefer, as in this sentence).
+% All
 
 \section{References}
 \label{sec:ref}
@@ -108,8 +114,43 @@ List and number all bibliographical references at the end of the paper. Referenc
 \newpage
 \appendix
 
-\section{Appendix}
+\section{Figures}
 
-Appendices are optional and must appear after the references. Their total length may not exceed 10 pages. Every figure, table and section in the appendices must be referenced directly from the main text.
+\texttt{figures.py} in the repository produces all the following five figures.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/learning_curves}
+  \caption{Cross entropy per epoch, training dashed and validation solid. The right panel evaluates the conditional model twice, once with the family label and once with the null label.}
+  \label{fig:curves}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/generation_quality}
+  \caption{pLDDT and identity to the nearest training sequence, for the two unconditional models and the two controls. The transformer column uses the 100 unguided samples, the other three 256 each.}
+  \label{fig:quality}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/prefix_accuracy}
+  \caption{Accuracy of the classifier head against prefix length, per family and over all three. Positions where fewer than 300 validation sequences remain are left out, which ends the curve at 102 residues.}
+  \label{fig:prefix}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/tradeoff}
+  \caption{Guidance strength against family membership and structural plausibility, classifier guidance in the left column and classifier-free guidance in the right. The upper panels carry two scales, composition distance in blue and predicted membership in red. The null label run has no $w$ and sits at the left edge.}
+  \label{fig:tradeoff}
+\end{figure*}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/composition_profile}
+  \caption{Mean amino acid composition of the guided samples at $\lambda = 0$ and $\lambda = 1$, next to the AcyP mean of the training set. 100 sequences per setting.}
+  \label{fig:composition}
+\end{figure*}
 
 \end{document}
