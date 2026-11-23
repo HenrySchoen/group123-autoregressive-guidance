@@ -23,10 +23,12 @@ def family_targets(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 class FamilyClassifier(nn.Module):
     def __init__(
-        self, backbone: nn.Module, d_model: int = 128, n_families: int = len(FAMILIES)
+        self, backbone: nn.Module, d_model: int | None = None, n_families: int = len(FAMILIES)
     ):
         super().__init__()
         self.backbone = backbone
+        if d_model is None:
+            d_model = backbone.tok_emb.embedding_dim
 
         # Only train the classifier head (freeze the backbone)
         for param in self.backbone.parameters():

@@ -66,7 +66,7 @@ def main():
     device = get_device()
     _, _, _, train_loader, val_loader, _ = get_loaders(args.batch_size)
 
-    model = ConditionalTransformer().to(device)
+    model = ConditionalTransformer(**CONFIG["transformer"]).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     print(f"cfg transformer on {device}: {sum(p.numel() for p in model.parameters()):,} parameters")
 

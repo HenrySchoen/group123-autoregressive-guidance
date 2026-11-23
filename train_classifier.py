@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 
 from load_data import get_loaders
+from protgen.config import CONFIG
 from protgen.data import IGNORE_INDEX
 from protgen.models.classifier import FamilyClassifier, family_targets
 from protgen.models.transformer import Transformer
@@ -30,7 +31,7 @@ def get_device() -> torch.device:
 
 def load_backbone(path: Path, device: torch.device) -> Transformer:
     checkpoint = torch.load(path, map_location=device)
-    backbone = Transformer()
+    backbone = Transformer(**CONFIG["transformer"])
     backbone.load_state_dict(checkpoint["model_state_dict"])
     return backbone
 

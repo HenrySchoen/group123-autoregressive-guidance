@@ -52,7 +52,7 @@ def main():
     torch.manual_seed(args.seed)
     device = get_device()
 
-    model = ConditionalTransformer().to(device)
+    model = ConditionalTransformer(**CONFIG["transformer"]).to(device)
     ckpt = torch.load(CKPT_DIR / "cfg.pt", map_location=device)
     model.load_state_dict(ckpt["model_state_dict"])
 

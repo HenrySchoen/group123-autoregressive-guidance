@@ -10,18 +10,17 @@ import math
 from pathlib import Path
 from tqdm import tqdm
 import wandb
-import yaml
 
 
 import torch
 import torch.nn.functional as F
 
 from load_data import get_loaders
+from protgen.config import CONFIG
 from protgen.models.transformer import Transformer
 from protgen.models.mlp import MLP
 
 CKPT_DIR = Path("results/checkpoints")
-CONFIG = yaml.safe_load(open(Path(__file__).parent / "config/default.yaml"))
 
 def get_device() -> torch.device:
     if torch.cuda.is_available():
@@ -31,11 +30,12 @@ def get_device() -> torch.device:
     return torch.device("cpu")
 
 
-def build_model(name: str) -> torch.nn.Module:
+def build_model(name: str, dropout: float | None = None) -> torch.nn.Module:
+    extra = {} if dropout is None else {"dropout": dropout}
     if name == "transformer":
-        return Transformer()
+        return Transformer(**{**CONFIG["transformer"], **extra})
     if name == "mlp":
-        return MLP(**CONFIG["mlp"])
+        return MLP(**{**CONFIG["mlp"], **extra})
     raise ValueError(f"unknown model: {name}")
 
 
@@ -95,6 +95,7 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--dropout", type=float, default=None, help="override the model's dropout rate")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--overfit", action="store_true", help="train on a single batch")
     parser.add_argument("--wandb", action="store_true", help="log to wandb")
@@ -110,7 +111,7 @@ def main() -> None:
         train_loader = [next(iter(train_loader))]
         val_loader = train_loader
 
-    model = build_model(args.model).to(device)
+    model = build_model(args.model, args.dropout).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     print(f"{args.model} on {device}: {sum(p.numel() for p in model.parameters()):,} parameters")
 
