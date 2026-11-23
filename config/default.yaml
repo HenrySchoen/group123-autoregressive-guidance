@@ -15,7 +15,7 @@ mlp:
 sample:
   num: 256
   temperature: 1.0
-  seed: 0okay 
+  seed: 0
 
   # classifier-free guidance
 cfg:
