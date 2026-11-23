@@ -52,7 +52,7 @@ def guided_step(model, prefix, family, lmbda):
 def check_lambda_zero(model, device):
     """Check that zero guidance gives the original model distribution.
 
-    Multiplying by zero also hides the guidance term, so this says nothing about whether the candidates were scored in the right order - check_candidate_scores does that.
+    Says nothing about the candidate order, since multiplying by zero hides that too.
     """
     candidates, residues = CANDIDATES.to(device), RESIDUES.to(device)
 
@@ -72,7 +72,7 @@ def check_lambda_zero(model, device):
 def check_candidate_scores(model, device):
     """Check that the score in column j belongs to the prefix extended by candidate j.
 
-    Scoring every candidate in one batch is the step that can silently transpose them, so each column is compared against the same candidate scored on its own.
+    Scoring every candidate in one batch is the step that can silently transpose them.
     """
     candidates, residues = CANDIDATES.to(device), RESIDUES.to(device)
     prefix = residues[torch.randint(len(AA), (3, 9), device=device)]
