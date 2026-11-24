@@ -1,6 +1,6 @@
 """Build the report figures.
 
-Reads each table where its run left it and writes PNGs to report/figures/.
+Reads each table where its run left it and writes PDFs to report/figures/.
 
 Run from the repo root, after eval_membership.py:
     uv run python figures.py
@@ -60,9 +60,9 @@ def save(fig, out: Path, name: str, tight: bool = True) -> None:
     if tight:
         fig.tight_layout()
 
-    fig.savefig(out / f"{name}.png")
+    fig.savefig(out / f"{name}.pdf")
     plt.close(fig)
-    print(f"wrote {out / name}.png")
+    print(f"wrote {out / name}.pdf")
 
 
 def eval_metrics() -> pd.DataFrame:
@@ -85,7 +85,7 @@ def history(name: str) -> pd.DataFrame:
 
 
 def learning_curves(out: Path) -> None:
-    fig, (left, right) = plt.subplots(1, 2, figsize=(PAGE, 3.0), sharey=True,
+    fig, (left, right) = plt.subplots(1, 2, figsize=(PAGE, 3.2), sharey=True,
                                       layout="constrained")
 
     for name, label in (("mlp", "MLP"), ("transformer", "Transformer")):
@@ -114,7 +114,7 @@ def learning_curves(out: Path) -> None:
 def generation_quality(metrics: pd.DataFrame, out: Path) -> None:
     present = [name for name in BASELINES if name in set(metrics["set"])]
     labels = [BASELINES[name] for name in present]
-    fig, (left, right) = plt.subplots(1, 2, figsize=(PAGE, 2.8))
+    fig, (left, right) = plt.subplots(1, 2, figsize=(PAGE, 3.0))
 
     for axes, column, label in (
         (left, "mean_plddt", "pLDDT"),
@@ -132,7 +132,7 @@ def prefix_curve(out: Path) -> None:
     table = pd.read_csv(CLASSIFIER_DIR / "prefix_accuracy.csv")
     table = table[table["n_sequences"] >= MIN_SEQUENCES]
 
-    fig, axes = plt.subplots(figsize=(PAGE, 2.8))
+    fig, axes = plt.subplots(figsize=(PAGE, 3.0))
 
     for family in FAMILIES:
         axes.plot(table["prefix_length"], table[family], label=family)
@@ -195,7 +195,7 @@ def cfg_curve(metrics, membership, means) -> pd.DataFrame:
 
 
 def tradeoff(metrics, membership, means, out: Path) -> None:
-    fig, axes = plt.subplots(2, 2, figsize=(PAGE, 4.6), sharex="col")
+    fig, axes = plt.subplots(2, 2, figsize=(PAGE, 5.0), sharex="col")
     panels = (
         (classifier_curve(metrics, membership, means), "classifier guidance", r"$\lambda$"),
         (cfg_curve(metrics, membership, means), "classifier-free guidance", r"$w$"),
@@ -229,7 +229,7 @@ def tradeoff(metrics, membership, means, out: Path) -> None:
 
 
 def composition_profile(means: pd.DataFrame, out: Path) -> None:
-    fig, axes = plt.subplots(figsize=(PAGE, 2.8))
+    fig, axes = plt.subplots(figsize=(PAGE, 3.0))
     positions = range(len(AA))
     width = 0.27
 
@@ -255,7 +255,16 @@ def main() -> None:
     parser.add_argument("--reference", default="data/train.csv")
     args = parser.parse_args()
 
-    plt.rcParams.update({"font.size": 9, "savefig.dpi": 200})
+    plt.rcParams.update({
+        "font.size": 10,
+        "font.family": "serif",
+        "font.serif": ["Times New Roman", "Nimbus Roman", "DejaVu Serif"],
+        "mathtext.fontset": "custom",
+        "mathtext.rm": "serif",
+        "mathtext.it": "serif:italic",
+        "mathtext.bf": "serif:bold",
+    })
+
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
