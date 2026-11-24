@@ -85,14 +85,22 @@ def history(name: str) -> pd.DataFrame:
 
 
 def learning_curves(out: Path) -> None:
-    fig, (left, right) = plt.subplots(1, 2, figsize=(PAGE, 3.2), sharey=True,
-                                      layout="constrained")
+    fig, (left, right) = plt.subplots(
+        1, 2, figsize=(PAGE, 3.2), sharey=True, layout="constrained"
+    )
 
     for name, label in (("mlp", "MLP"), ("transformer", "Transformer")):
         table = history(name)
-        line, = left.plot(table["epoch"], table["val_loss"], label=f"{label} validation")
-        left.plot(table["epoch"], table["train_loss"], "--", color=line.get_color(),
-                  label=f"{label} training")
+        (line,) = left.plot(
+            table["epoch"], table["val_loss"], label=f"{label} validation"
+        )
+        left.plot(
+            table["epoch"],
+            table["train_loss"],
+            "--",
+            color=line.get_color(),
+            label=f"{label} training",
+        )
 
     left.set_title("unconditional models")
     left.set_xlabel("epoch")
@@ -106,7 +114,9 @@ def learning_curves(out: Path) -> None:
 
     # One legend for both panels, there is no room for it inside either
     lines = left.get_lines() + right.get_lines()
-    fig.legend(lines, [line.get_label() for line in lines], loc="outside lower center", ncol=3)
+    fig.legend(
+        lines, [line.get_label() for line in lines], loc="outside lower center", ncol=3
+    )
 
     save(fig, out, "learning_curves", tight=False)
 
@@ -120,7 +130,9 @@ def generation_quality(metrics: pd.DataFrame, out: Path) -> None:
         (left, "mean_plddt", "pLDDT"),
         (right, "nearest_identity", "identity to nearest training sequence"),
     ):
-        values = [metrics.loc[metrics["set"] == name, column].dropna() for name in present]
+        values = [
+            metrics.loc[metrics["set"] == name, column].dropna() for name in present
+        ]
         axes.boxplot(values, tick_labels=labels)
         axes.set_ylabel(label)
         axes.tick_params(axis="x", rotation=15)
@@ -151,8 +163,13 @@ def strength(setting: str) -> float:
     return -1.0 if setting == "null_label" else float(setting.removeprefix("w="))
 
 
-def add_measurements(curve: pd.DataFrame, metrics: pd.DataFrame, membership: pd.DataFrame,
-                     sets: dict, strengths: pd.Series) -> pd.DataFrame:
+def add_measurements(
+    curve: pd.DataFrame,
+    metrics: pd.DataFrame,
+    membership: pd.DataFrame,
+    sets: dict,
+    strengths: pd.Series,
+) -> pd.DataFrame:
     """Attach pLDDT and predicted membership to a curve indexed by guidance strength."""
     folded = metrics[metrics["set"].isin(sets)].copy()
     folded["strength"] = folded["set"].map(sets)
@@ -171,13 +188,16 @@ def classifier_curve(metrics, membership, means) -> pd.DataFrame:
     for path in sorted(SEQ_DIR.glob(f"guided_{TARGET}_lmbda*.csv")):
         samples = pd.read_csv(path)
         distances = family_metrics(samples["sequence"], means)[f"l1_{TARGET}"]
-        rows.append({"strength": float(samples["lmbda"].iloc[0]), "l1": distances.mean()})
+        rows.append(
+            {"strength": float(samples["lmbda"].iloc[0]), "l1": distances.mean()}
+        )
 
     curve = pd.DataFrame(rows).set_index("strength").sort_index()
     scored = membership[membership["set"].str.startswith(f"guided_{TARGET}_lmbda")]
 
-    return add_measurements(curve, metrics, scored, CLASSIFIER_SETS,
-                            scored["setting"].astype(float))
+    return add_measurements(
+        curve, metrics, scored, CLASSIFIER_SETS, scored["setting"].astype(float)
+    )
 
 
 def cfg_curve(metrics, membership, means) -> pd.DataFrame:
@@ -186,18 +206,26 @@ def cfg_curve(metrics, membership, means) -> pd.DataFrame:
     kept = sequences.str.len() > 0
 
     distances = family_metrics(sequences[kept], means)[f"l1_{TARGET}"]
-    curve = pd.DataFrame({"l1": distances, "strength": samples["setting"][kept].map(strength)})
+    curve = pd.DataFrame(
+        {"l1": distances, "strength": samples["setting"][kept].map(strength)}
+    )
     curve = curve.groupby("strength").mean()
 
     scored = membership[membership["set"] == "guided_cfg"]
 
-    return add_measurements(curve, metrics, scored, CFG_SETS, scored["setting"].map(strength))
+    return add_measurements(
+        curve, metrics, scored, CFG_SETS, scored["setting"].map(strength)
+    )
 
 
 def tradeoff(metrics, membership, means, out: Path) -> None:
     fig, axes = plt.subplots(2, 2, figsize=(PAGE, 5.0), sharex="col")
     panels = (
-        (classifier_curve(metrics, membership, means), "classifier guidance", r"$\lambda$"),
+        (
+            classifier_curve(metrics, membership, means),
+            "classifier guidance",
+            r"$\lambda$",
+        ),
         (cfg_curve(metrics, membership, means), "classifier-free guidance", r"$w$"),
     )
 
@@ -233,14 +261,22 @@ def composition_profile(means: pd.DataFrame, out: Path) -> None:
     positions = range(len(AA))
     width = 0.27
 
-    for offset, lmbda in ((-width, 0), (0.0, 1)):
+    for offset, lmbda in ((-width, 0), (0.0, 5)):
         samples = pd.read_csv(SEQ_DIR / f"guided_{TARGET}_lmbda{lmbda}.csv")
         fractions = composition(samples["sequence"]).mean() * 100
-        axes.bar([p + offset for p in positions], fractions, width,
-                 label=rf"generated, $\lambda$ = {lmbda}")
+        axes.bar(
+            [p + offset for p in positions],
+            fractions,
+            width,
+            label=rf"generated, $\lambda$ = {lmbda}",
+        )
 
-    axes.bar([p + width for p in positions], means.loc[TARGET] * 100, width,
-             label=f"real {TARGET}")
+    axes.bar(
+        [p + width for p in positions],
+        means.loc[TARGET] * 100,
+        width,
+        label=f"real {TARGET}",
+    )
     axes.set_xticks(list(positions), list(AA))
     axes.set_xlabel("amino acid")
     axes.set_ylabel("abundance (percent)")
@@ -255,15 +291,17 @@ def main() -> None:
     parser.add_argument("--reference", default="data/train.csv")
     args = parser.parse_args()
 
-    plt.rcParams.update({
-        "font.size": 10,
-        "font.family": "serif",
-        "font.serif": ["Times New Roman", "Nimbus Roman", "DejaVu Serif"],
-        "mathtext.fontset": "custom",
-        "mathtext.rm": "serif",
-        "mathtext.it": "serif:italic",
-        "mathtext.bf": "serif:bold",
-    })
+    plt.rcParams.update(
+        {
+            "font.size": 10,
+            "font.family": "serif",
+            "font.serif": ["Times New Roman", "Nimbus Roman", "DejaVu Serif"],
+            "mathtext.fontset": "custom",
+            "mathtext.rm": "serif",
+            "mathtext.it": "serif:italic",
+            "mathtext.bf": "serif:bold",
+        }
+    )
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
