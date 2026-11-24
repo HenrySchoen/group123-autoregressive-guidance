@@ -1,7 +1,7 @@
 % Based on template for ICASSP-2010 paper; to be used with:
 %          02456.sty  - 02456 LaTeX style file adapted from ICASSP
 \documentclass{article}
-\usepackage{amsmath,graphicx,02456}
+\usepackage{amsmath,graphicx,02456,xurl}
 
 \toappear{02456 Deep Learning, DTU Compute, Fall 2026}
 
@@ -31,8 +31,21 @@
 \section{Introduction}
 \label{sec:intro}
 
-% All (problem, Bayes rule, what we built, what we found)
-% repo link: https://github.com/HenrySchoen/group123-autoregressive-guidance
+Protein language models can generate plausible protein sequences, but protein design usually requires sequences with a specific property.
+We steer an autoregressive model towards one of three protein families, acylphosphatase, HPr and HU, and evaluate what the steering does to the generated sequences.
+
+Bayes' rule writes the conditional distribution as a product of a generative and a predictive model, $p(x_i \mid x_{<i}, y) \propto p(y \mid x_{\leq i})\, p(x_i \mid x_{<i})$, which turns conditioning on a family into a reweighting of the next-token distribution.
+Two implementations follow from it.
+Classifier guidance trains a separate predictor and queries it for every candidate token.
+Classifier-free guidance trains one network on both the conditional and the unconditional distribution and recovers the predictor from their ratio.
+
+We train an MLP and a causal transformer on the three families, fit a family classifier on the frozen transformer, and run both guidance schemes over a range of strengths.
+Classifier guidance moves the amino acid composition towards the target family and lowers the structural confidence of the samples.
+At $\lambda = 5$, where the composition is closest to the target, the mean pLDDT has fallen from 88.4 to 78.9.
+Classifier-free guidance does not show the same trade over the range we tested.
+The classifier used for guidance also reports a larger improvement in predicted family membership than the independent measures do.
+
+The code and all samples are at \url{https://github.com/HenrySchoen/group123-autoregressive-guidance}.
 
 \section{Methods}
 \label{sec:methods}
@@ -48,12 +61,29 @@
 \subsection{Family classifier}
 \label{ssec:classifier}
 
-% Henry (head on the frozen backbone & why it has to predict from partial sequences)
+Guidance needs $p_\phi(y \mid x_{\leq i})$ at every step of generation, so the predictor has to label partial sequences and not only finished ones.
+We freeze the trained transformer and fit a single linear layer on its hidden states, so that $\theta \subset \phi$ and the generative model remains unchanged.
+With a model width of 256 the head has 771 parameters.
+Because the backbone is causal, one forward pass gives the state of every prefix at once, so a single pass per sequence supervises all prefix positions.
+We copy the family label to every valid position, ignore padding and the BOS token, and train the head for ten epochs with AdamW at a learning rate of $10^{-3}$.
 
 \subsection{Classifier guidance}
 \label{ssec:guidance}
 
-% Henry (Equation 9, the 21 candidate evaluations per token & the two checks for correctness)
+We combine the two models in log space, as the project description suggests:
+\begin{equation}
+  \log \tilde{p}(x_i \mid x_{<i}, y) = \log p_\theta(x_i \mid x_{<i}) + \lambda \log p_\phi(y \mid x_{\leq i})
+  \label{eq:guidance}
+\end{equation}
+
+The predictor conditions on $x_{\leq i}$, so every candidate token needs its own extended prefix and one generation step costs 21 predictor evaluations, the 20 amino acids plus the end token.
+Including the end token in the candidate set departs from the project description, which restricts the candidates to $\mathcal{A}$.
+Without it no sequence can terminate once guidance is active.
+The scale $\lambda$ is analogous to the classifier gradient scale of Dhariwal and Nichol \cite{dhariwal2021diffusion}, which trades sample diversity against fidelity in diffusion models.
+
+We verify the implementation twice.
+At $\lambda = 0$ the guided scores must equal the unguided ones, and they agree to within $10^{-6}$.
+That test is blind to the order of the candidates, because multiplying by zero hides a transposition as well, so a second test scores each candidate on its own and compares it against the batched result.
 
 \subsection{Classifier-free guidance}
 \label{ssec:cfg}
@@ -77,20 +107,36 @@
 \subsection{Classifier accuracy}
 \label{ssec:accuracy}
 
-% Henry (Complete and partial sequences & drops at the later prefix positions)
-% \ref{fig:prefix}
+On complete validation sequences the head reaches 0.939 accuracy, with 0.964 on AcyP, 0.885 on HPr and 0.969 on HU over 667 sequences each.
+Fig.~\ref{fig:prefix} shows how that accuracy builds along the prefix.
+A prefix of one residue carries almost no family information, since 1998 of the 2001 sequences start with methionine, and the head falls back on one class there.
+Accuracy first reaches 0.9 at a prefix of 18 residues, dips below it six more times, most deeply to 0.834 at position 20, and stays above it from position 47 on.
+
+Within the first fifteen positions the accuracy differs considerably between the three families.
+At six residues the head scores 0.576 on AcyP, 0.649 on HPr and 0.691 on HU.
+One residue later the score for HPr falls to 0.511 while HU stays at 0.754.
+HPr also has the lowest accuracy on complete sequences.
 
 \subsection{Guidance strength}
 \label{ssec:strength}
 
-% Henry for lambda
-% Paul for w
-% \ref{fig:tradeoff}
+Fig.~\ref{fig:tradeoff} shows the effect of increasing $\lambda$ on the evaluation metrics.
+Composition distance to the AcyP mean falls at every step of the sweep, from 40.9 points at $\lambda = 0$ to 36.1 at $\lambda = 5$.
+pLDDT, introduced with AlphaFold2 \cite{jumper2021highly} and also reported by ESMFold \cite{lin2023evolutionary}, estimates how accurately the structure is predicted at each residue.
+It holds near 88 up to $\lambda = 0.5$, falls to 84.4 at $\lambda = 1$ and to 78.1 at $\lambda = 2$, and is 78.9 at $\lambda = 5$.
+The median identity to the nearest training sequence drops from 0.74 to 0.52 over the same range.
+Two thirds of the improvement in composition distance occur up to $\lambda = 1$, where pLDDT has dropped by four points, while the remaining third is accompanied by a further drop of five and a half points.
+
+Predicted membership grows from 0.24 to 0.92 over the same sweep, and the share of samples the head assigns to AcyP from 0.24 to 0.98, while the composition distance improves by twelve percent.
+The two kinds of measure are not on a common scale, but the predictor is the only one that reports the target family as essentially reached.
+
+% Paul: the w series goes here, same three measures.
+% \cite{ho2022classifier} fits where the collapse at w = 8 comes up (stronger guidance raises the fidelity of single samples and lowers their variety)
 
 \subsection{Comparing the two schemes}
 \label{ssec:comparison}
 
-% Paul (both schemes at their optimum, lambda = 1 against w = 2 & what each one costs)
+% Paul (both schemes where the composition is closest, lambda = 5 against w = 0, & what each one costs)
 % \ref{fig:composition}
 
 \section{Discussion}
@@ -103,11 +149,6 @@
 
 % All
 
-\section{References}
-\label{sec:ref}
-
-List and number all bibliographical references at the end of the paper. References may be numbered (either alphabetically or in order of appearance) or follow the author–year citation style (e.g., using the \texttt{natbib} package). If you use a numeric style, cite references using square brackets, e.g., \cite{C2}. If you use an author–year style, cite using round brackets.
-
 \bibliographystyle{IEEEbib}
 \bibliography{template}
 
@@ -116,40 +157,40 @@ List and number all bibliographical references at the end of the paper. Referenc
 
 \section{Figures}
 
-\texttt{figures.py} in the repository produces all the following five figures.
+\texttt{figures.py} in the repository produces the five figures below.
 
-\begin{figure*}[t]
+\begin{figure*}[p]
   \centering
   \includegraphics[width=\textwidth]{figures/learning_curves}
-  \caption{Cross entropy per epoch, training dashed and validation solid. The right panel evaluates the conditional model twice, once with the family label and once with the null label.}
+  \caption{Cross entropy per epoch. In the left panel training is dashed and validation solid. The right panel evaluates the conditional model twice on the validation set, once with the family label and once with the null label.}
   \label{fig:curves}
 \end{figure*}
 
-\begin{figure*}[t]
+\begin{figure*}[p]
   \centering
   \includegraphics[width=\textwidth]{figures/generation_quality}
   \caption{pLDDT and identity to the nearest training sequence, for the two unconditional models and the two controls. The transformer column uses the 100 unguided samples, the other three 256 each.}
   \label{fig:quality}
 \end{figure*}
 
-\begin{figure*}[t]
+\begin{figure*}[p]
   \centering
   \includegraphics[width=\textwidth]{figures/prefix_accuracy}
   \caption{Accuracy of the classifier head against prefix length, per family and over all three. Positions where fewer than 300 validation sequences remain are left out, which ends the curve at 102 residues.}
   \label{fig:prefix}
 \end{figure*}
 
-\begin{figure*}[t]
+\begin{figure*}[p]
   \centering
   \includegraphics[width=\textwidth]{figures/tradeoff}
-  \caption{Guidance strength against family membership and structural plausibility, classifier guidance in the left column and classifier-free guidance in the right. The upper panels carry two scales, composition distance in blue and predicted membership in red. The null label run has no $w$ and sits at the left edge.}
+  \caption{Guidance strength against family membership and structural plausibility, classifier guidance in the left column and classifier-free guidance in the right. The upper panels use two scales, composition distance in blue on the left axis and predicted membership in red on the right. The lower panels show the mean pLDDT. The null label run has no $w$ and is plotted at the left edge.}
   \label{fig:tradeoff}
 \end{figure*}
 
-\begin{figure*}[t]
+\begin{figure*}[p]
   \centering
   \includegraphics[width=\textwidth]{figures/composition_profile}
-  \caption{Mean amino acid composition of the guided samples at $\lambda = 0$ and $\lambda = 1$, next to the AcyP mean of the training set. 100 sequences per setting.}
+  \caption{Mean amino acid composition of the guided samples at $\lambda = 0$ and $\lambda = 5$, next to the AcyP mean of the training set. 100 sequences per setting.}
   \label{fig:composition}
 \end{figure*}
 
